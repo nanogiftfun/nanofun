@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>nanogift</title>
+  <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#ffffff;--accent:#8fc46f;--box:#f7f7f7;--stroke:#3a3a3a}
+    html,body{height:100%;margin:0;font-family: 'Indie Flower', cursive;background:var(--bg);}
+    .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:40px 20px;box-sizing:border-box}
+    .card{width:100%;max-width:380px;text-align:left}
+
+    .btn-pill{display:inline-block;background:var(--accent);color:#fff;padding:8px 18px;border-radius:12px;font-weight:700;box-shadow:0 1px 0 rgba(0,0,0,0.05);font-size:18px}
+    .btn-pill a {color: #fff; text-decoration: none;}
+    
+    form{margin-top:16px}
+    .row{display:flex;align-items:center;gap:10px;margin:12px 0}
+    label.checkbox{display:flex;align-items:center;gap:10px;font-size:16px;color:var(--stroke)}
+    input[type='checkbox']{width:18px;height:18px}
+
+    .input{width:100%;padding:14px 16px;border-radius:8px;border:2px solid #ddd;background:#fff;font-size:18px;box-sizing:border-box;outline:none;font-family:'Indie Flower',cursive}
+    .input::placeholder{color:#bdbdbd}
+
+    .submit{width:100%;margin-top:12px;padding:16px;border-radius:10px;background:#565656;color:#fff;border:none;font-size:20px;cursor:pointer;box-shadow:0 3px 0 rgba(0,0,0,0.15)}
+    .submit.enabled{background:#8fc46f;}
+
+    /* centered look similar to screenshot */
+    .center-box{display:block;margin:18px 0}
+
+    /* modal */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.35);}
+    .modal .panel{background:#fff;padding:20px;border-radius:10px;max-width:360px;width:90%;text-align:center}
+    .modal h3{margin:0 0 8px 0}
+    .modal p{margin:6px 0 18px 0; font-family: 'Roboto', sans-serif; font-weight: 700;}
+    .modal .actions{display:flex;gap:10px;justify-content:center}
+    .linkbtn{padding:10px 12px;border-radius:8px;border:none;cursor:pointer}
+    .twitter{background:#1da1f2;color:white}
+    .share{background:#f0f0f0}
+
+    /* small screen tweaks */
+    @media (max-width:420px){.card{max-width:320px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <span class="btn-pill"><a href="https://x.com/nanogiftfun" target="_blank" rel="noopener">Like & Retweet</a></span>
+
+      <form id="signup">
+        <div class="row">
+          <label class="checkbox"><input id="liked" type="checkbox"> I have liked & retweeted the post</label>
+        </div>
+
+        <div class="center-box">
+          <input id="username" class="input" placeholder="Enter your @username" />
+        </div>
+
+        <div class="center-box">
+          <input id="wallet" class="input" placeholder="your wallet address 0x..." />
+        </div>
+
+        <button type="submit" class="submit" disabled>Submit</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- modal -->
+  <div id="modal" class="modal" role="dialog" aria-hidden="true">
+    <div class="panel">
+      <h3>Join Successful!</h3>
+      <p>Friend, your submission has been recorded successfully! Follow on Twitter and share.</p>
+      <div class="actions">
+        <a id="followLink" class="linkbtn twitter" href="#" target="_blank" rel="noopener">Follow on Twitter</a>
+        <button id="shareBtn" class="linkbtn share">Share</button>
+      </div>
+      <div style="margin-top:12px">
+        <button id="close" class="linkbtn" style="padding:8px 10px">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // Import Firebase SDKs
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-analytics.js";
+    import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
+
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyAb3HQrxkpvAa47Yahp7nPgBG0_Kumea9Y",
+      authDomain: "nano-335f2.firebaseapp.com",
+      databaseURL: "https://nano-335f2-default-rtdb.firebaseio.com",
+      projectId: "nano-335f2",
+      storageBucket: "nano-335f2.firebasestorage.app",
+      messagingSenderId: "1007641462848",
+      appId: "1:1007641462848:web:a1fce09fc4eb5a618777a5",
+      measurementId: "G-H9Z0H1X4D5"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const database = getDatabase(app);
+
+    const form = document.getElementById('signup');
+    const modal = document.getElementById('modal');
+    const followLink = document.getElementById('followLink');
+    const shareBtn = document.getElementById('shareBtn');
+    const closeBtn = document.getElementById('close');
+    const checkbox = document.getElementById('liked');
+    const submitBtn = document.querySelector('.submit');
+
+    // Set Twitter handle URL here
+    const twitterHandle = 'https://twitter.com/nanogiftfun';
+    followLink.href = twitterHandle;
+
+    // Enable submit button and change color when checkbox is checked
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) {
+        submitBtn.classList.add('enabled');
+        submitBtn.disabled = false;
+      } else {
+        submitBtn.classList.remove('enabled');
+        submitBtn.disabled = true;
+      }
+    });
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const liked = document.getElementById('liked').checked;
+      const username = document.getElementById('username').value.trim();
+      const wallet = document.getElementById('wallet').value.trim();
+
+      if (!liked) {
+        alert('Please check that you have liked & retweeted the post.');
+        return;
+      }
+      if (!username || !wallet) {
+        alert('Please fill in all fields.');
+        return;
+      }
+
+      // Save data to Firebase
+      const submissionsRef = ref(database, 'submissions');
+      push(submissionsRef, {
+        username,
+        wallet,
+        liked: true,
+        timestamp: Date.now()
+      }).then(() => {
+        // Show modal with success message
+        modal.style.display = 'flex';
+        modal.setAttribute('aria-hidden', 'false');
+      }).catch((error) => {
+        console.error('Error saving to Firebase:', error);
+        alert('An error occurred while saving your submission. Please try again.');
+      });
+
+      // Optionally clear form
+      // form.reset();
+    });
+
+    closeBtn.addEventListener('click', () => {
+      modal.style.display = 'none';
+      modal.setAttribute('aria-hidden', 'true');
+    });
+
+    shareBtn.addEventListener('click', async () => {
+      const shareData = { title: 'Join - Like & Retweet', text: 'I joined this campaign! Follow and retweet.', url: location.href };
+      if (navigator.share) {
+        try {
+          await navigator.share(shareData);
+        } catch (err) {
+          console.log('share cancelled or failed', err);
+        }
+      } else {
+        // fallback: copy link
+        try {
+          await navigator.clipboard.writeText(location.href);
+          alert('Link copied — now paste it in your tweet to share.');
+        } catch (err) {
+          alert('Your browser does not support sharing. Copy the link: ' + location.href);
+        }
+      }
+    });
+
+    // close modal on outside click
+    modal.addEventListener('click', (ev) => {
+      if (ev.target === modal) {
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
+      }
+    });
+  </script>
+</body>
+</html>
